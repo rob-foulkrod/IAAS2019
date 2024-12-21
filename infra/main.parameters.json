@@ -8,7 +8,7 @@
     "location": {
       "value": "${AZURE_LOCATION}"
     },
-    "WebVMAdminUsername": {
+    "WebVMAdminUserName": {
       "value": "webvmadmin"
     },
     "SQLVMAdminUserName": {

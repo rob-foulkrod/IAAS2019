@@ -28,13 +28,7 @@ param WebVMWindowsOSVersion string = '2019-Datacenter'
 @minLength(1)
 param WebPublicIPDnsName string
 
-@description('The location of resources, such as templates and DSC modules, that the template depends on')
-param _artifactsLocation string = 'https://attdemodeploystoacc.blob.core.windows.net/deployartifacts/deploytemplateartifacts'
-
-@description('Auto-generated token to access _artifactsLocation. Leave it blank unless you need to provide your own value.')
-@secure()
-param _artifactsLocationSasToken string = ''
-param WebPackage string = 'https://attdemodeploystoacc.blob.core.windows.net/deployartifacts/eshoponweb_iissource.zip'
+param WebPackage string = 'https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/eshoponweb_iissource.zip'
 
 @minLength(1)
 param SQLVMName string
@@ -84,39 +78,49 @@ var SQLDISK1 = 'http://${vmstorageName}.blob.core.windows.net/vhds/dataDisk1.vhd
 var SQLDISK2 = 'http://${vmstorageName}.blob.core.windows.net/vhds/dataDisk2.vhd'
 var SQLDSCArchiveFolder = 'DSC'
 var SQLDSCArchiveFileName = 'SQLDSC.zip'
-var WebModulesURL = uri(_artifactsLocation, 'IAAS2019/.azure/DSC/WEBDSC.zip${_artifactsLocationSasToken}')
+var WebModulesURL = 'https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/WEBDSC.zip'
 var WebConfigurationFunction = 'WEBDSC.ps1\\CREATEOUS'
-var SQLModulesURL = uri(_artifactsLocation, 'IAAS2019/.azure/DSC/SQLDSC.zip${_artifactsLocationSasToken}')
+var SQLModulesURL = 'https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/SQLDSC.zip'
 var SQLConfigurationFunction = 'CREATEOUS.ps1\\CREATEOUS'
 
-resource AzTrainingVNet 'Microsoft.Network/virtualNetworks@2016-03-30' = {
-  name: 'AzTrainingVNet'
-  location: resourceGroup().location
-  tags: {
-    displayName: 'AzTrainingVNet'
+module monitoring 'br/public:avm/ptn/azd/monitoring:0.1.0' = {
+  name: 'monitoring'
+  params: {
+    logAnalyticsName: '${abbrs.operationalInsightsWorkspaces}${ResourceToken}'
+    applicationInsightsName: '${abbrs.insightsComponents}${ResourceToken}'
+    applicationInsightsDashboardName: '${abbrs.portalDashboards}${ResourceToken}'
+    location: resourceGroup().location
   }
-  properties: {
-    addressSpace: {
-      addressPrefixes: [
-        AzTrainingVNetPrefix
-      ]
+}
+
+module AzTrainingVNet 'br/public:avm/res/network/virtual-network:0.5.1' = {
+  name: 'AzTrainingVNetDeployment'
+
+  params: {
+    // Required parameters
+    addressPrefixes: [AzTrainingVNetPrefix]
+    name: '${abbrs.networkVirtualNetworks}${ResourceToken}'
+    // Non-required parameters
+    location: resourceGroup().location
+    tags: {
+      displayName: 'AzTrainingVNet'
     }
     subnets: [
       {
         name: AzTrainingVNetSubnet1Name
-        properties: {
-          addressPrefix: AzTrainingVNetSubnet1Prefix
-        }
+        addressPrefix: AzTrainingVNetSubnet1Prefix
       }
       {
         name: AzTrainingVNetSubnet2Name
-        properties: {
-          addressPrefix: AzTrainingVNetSubnet2Prefix
-        }
+        addressPrefix: AzTrainingVNetSubnet2Prefix
+      }
+    ]
+    diagnosticSettings: [
+      {
+        workspaceResourceId: monitoring.outputs.logAnalyticsWorkspaceResourceId
       }
     ]
   }
-  dependsOn: []
 }
 
 resource vmstorage 'Microsoft.Storage/storageAccounts@2016-01-01' = {
@@ -220,9 +224,9 @@ resource WebVMName_Microsoft_Powershell_DSC 'Microsoft.Compute/virtualMachines/e
         webDeployPackage: WebPackage
       }
     }
-    protectedSettings: {
-      configurationUrlSasToken: _artifactsLocationSasToken
-    }
+    // protectedSettings: {
+    //   configurationUrlSasToken: _artifactsLocationSasToken
+    // }
   }
 }
 
@@ -366,8 +370,10 @@ resource SQLVMName_Microsoft_Powershell_DSC 'Microsoft.Compute/virtualMachines/e
         nodeName: SQLVMName
       }
     }
-    protectedSettings: {
-      configurationUrlSasToken: _artifactsLocationSasToken
-    }
+    // protectedSettings: {
+    //   configurationUrlSasToken: _artifactsLocationSasToken
+    // }
   }
 }
+
+output APP_ENDPOINT string = 'http://${WebPublicIP.properties.dnsSettings.fqdn}'

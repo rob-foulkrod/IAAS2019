@@ -19,8 +19,7 @@ param vmstorageType string = 'Premium_LRS'
 
 param WebVMName string = ''
 
-@minLength(1)
-param WebVMAdminUserName string
+param WebVMAdminUserName string = ''
 
 @secure()
 param WebVMAdminPassword string
@@ -33,12 +32,11 @@ param WebVMAdminPassword string
 ])
 param WebVMWindowsOSVersion string = '2019-Datacenter'
 
-param WebPublicIPDnsName string
+param WebPublicIPDnsName string = ''
 
 param SQLVMName string = ''
 
-@minLength(1)
-param SQLVMAdminUserName string
+param SQLVMAdminUserName string = ''
 
 @secure()
 param SQLVMAdminPassword string
@@ -89,3 +87,5 @@ module resources './resources.bicep' = {
     ResourceToken: resourceToken
   }
 }
+
+output APP_ENDPOINT string = resources.outputs.APP_ENDPOINT
