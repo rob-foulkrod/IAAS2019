@@ -9,12 +9,12 @@ param environmentName string
 @description('Primary location for all resources')
 param location string
 
-param WebVMName string = ''
+param webVMName string = ''
 
-param WebVMAdminUserName string = ''
+param webVMAdminUserName string = ''
 
 @secure()
-param WebVMAdminPassword string
+param webVMAdminPassword string
 
 @allowed([
   '2008-R2-SP1'
@@ -22,22 +22,22 @@ param WebVMAdminPassword string
   '2012-R2-Datacenter'
   '2019-Datacenter'
 ])
-param WebVMWindowsOSVersion string = '2019-Datacenter'
+param webVMWindowsOSVersion string = '2019-Datacenter'
 
-param WebPublicIPDnsName string = ''
+param webPublicIPDnsName string = ''
 
-param SQLVMName string = ''
+param sqlVMName string = ''
 
-param SQLVMAdminUserName string = ''
+param sqlVMAdminUserName string = ''
 
 @secure()
-param SQLVMAdminPassword string
+param sqlVMAdminPassword string
 
 @allowed([
   'Web'
   'Standard'
 ])
-param SQLVMSKU string = 'Web'
+param sqlVMSKU string = 'Web'
 
 param currentUserId string
 
@@ -53,9 +53,9 @@ var tags = {
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 
 //set the sqlvmname if blank
-var derivedSQLVMName = SQLVMName == '' ? 'sqlvm-${environmentName}' : SQLVMName
-var derivedWebVMName = WebVMName == '' ? 'webvm-${environmentName}' : WebVMName
-var derivedWebPublicIPDnsName = WebPublicIPDnsName == '' ? 'iaas2019-${resourceToken}' : WebPublicIPDnsName
+var derivedSQLVMName = sqlVMName == '' ? 'sqlvm-${environmentName}' : sqlVMName
+var derivedWebVMName = webVMName == '' ? 'webvm-${environmentName}' : webVMName
+var derivedWebPublicIPDnsName = webPublicIPDnsName == '' ? 'iaas2019-${resourceToken}' : webPublicIPDnsName
 
 var abbrs = loadJsonContent('./abbreviations.json')
 
@@ -74,12 +74,12 @@ module vault 'br/public:avm/res/key-vault/vault:0.11.0' = {
     location: rg.location
     secrets: [
       {
-        name: 'WebVMAdminPassword'
-        value: WebVMAdminPassword
+        name: 'webVMAdminPassword'
+        value: webVMAdminPassword
       }
       {
-        name: 'SQLVMAdminPassword'
-        value: SQLVMAdminPassword
+        name: 'sqlVMAdminPassword'
+        value: sqlVMAdminPassword
       }
     ]
     roleAssignments: [
@@ -96,16 +96,16 @@ module resources './resources.bicep' = {
   name: 'resources'
   scope: rg
   params: {
-    WebVMName: derivedWebVMName
-    WebVMAdminUserName: WebVMAdminUserName
-    WebVMAdminPassword: WebVMAdminPassword
-    SQLVMName: derivedSQLVMName
-    SQLVMAdminUserName: SQLVMAdminUserName
-    SQLVMAdminPassword: SQLVMAdminPassword
-    SQLVMSKU: SQLVMSKU
-    WebVMWindowsOSVersion: WebVMWindowsOSVersion
-    WebPublicIPDnsName: derivedWebPublicIPDnsName
-    ResourceToken: resourceToken
+    webVMName: derivedWebVMName
+    webVMAdminUserName: webVMAdminUserName
+    webVMAdminPassword: webVMAdminPassword
+    sqlVMName: derivedSQLVMName
+    sqlVMAdminUserName: sqlVMAdminUserName
+    sqlVMAdminPassword: sqlVMAdminPassword
+    sqlVMSKU: sqlVMSKU
+    webVMWindowsOSVersion: webVMWindowsOSVersion
+    webPublicIPDnsName: derivedWebPublicIPDnsName
+    resourceToken: resourceToken
   }
 }
 

@@ -12,17 +12,17 @@
       "value": "${AZURE_PRINCIPAL_ID}"
     },
 
-    "WebVMAdminUserName": {
+    "webVMAdminUserName": {
       "value": "webvmadmin"
     },
-    "SQLVMAdminUserName": {
+    "sqlVMAdminUserName": {
       "value": "sqlvmadmin"
     },
 
-    "WebVMAdminPassword": {
+    "webVMAdminPassword": {
       "value": "$(secretOrRandomPassword ${AZURE_KEY_VAULT_NAME} WebVMAdminPassword)"
     },
-    "SQLVMAdminPassword": {
+    "sqlVMAdminPassword": {
       "value": "$(secretOrRandomPassword ${AZURE_KEY_VAULT_NAME} SQLVMAdminPassword)"
     }
   }

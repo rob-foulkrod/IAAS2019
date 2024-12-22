@@ -1,13 +1,13 @@
 targetScope = 'resourceGroup'
 
 @minLength(1)
-param WebVMName string
+param webVMName string
 
 @minLength(1)
-param WebVMAdminUserName string
+param webVMAdminUserName string
 
 @secure()
-param WebVMAdminPassword string
+param webVMAdminPassword string
 
 @allowed([
   '2008-R2-SP1'
@@ -15,64 +15,61 @@ param WebVMAdminPassword string
   '2012-R2-Datacenter'
   '2019-Datacenter'
 ])
-param WebVMWindowsOSVersion string = '2019-Datacenter'
+param webVMWindowsOSVersion string = '2019-Datacenter'
 
 @minLength(1)
-param WebPublicIPDnsName string
-
-param WebPackage string = 'https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/eshoponweb_iissource.zip'
+param webPublicIPDnsName string
 
 @minLength(1)
-param SQLVMName string
+param sqlVMName string
 
 @minLength(1)
-param SQLVMAdminUserName string
+param sqlVMAdminUserName string
 
 @secure()
-param SQLVMAdminPassword string
+param sqlVMAdminPassword string
 
 @allowed([
   'Web'
   'Standard'
 ])
-param SQLVMSKU string = 'Web'
+param sqlVMSKU string = 'Web'
 
-param ResourceToken string
+param resourceToken string
 
 var abbrs = loadJsonContent('./abbreviations.json')
 
-var AzTrainingVNetPrefix = '10.0.0.0/16'
-var AzTrainingVNetSubnet1Name = 'FrontendNetwork'
-var AzTrainingVNetSubnet1Prefix = '10.0.0.0/24'
-var AzTrainingVNetSubnet2Name = 'BackendNetwork'
-var AzTrainingVNetSubnet2Prefix = '10.0.1.0/24'
-var WebVMImagePublisher = 'MicrosoftWindowsServer'
-var WebVMImageOffer = 'WindowsServer'
-var WebVMVmSize = 'Standard_D4lds_v5'
-var WebPublicIPName = 'WebPublicIP'
-var SQLVMImagePublisher = 'MicrosoftSQLServer'
-var SQLVMImageOffer = 'sql2019-ws2019'
-var SQLVMVmSize = 'Standard_D4lds_v5'
-var WebModulesURL = 'https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/WEBDSC.zip'
-//var WebConfigurationFunction = 'WEBDSC.ps1\\CREATEOUS'
-var SQLModulesURL = 'https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/SQLDSC.zip'
-//var SQLConfigurationFunction = 'SQLDSC.ps1\\CREATEOUS'
+var azTrainingVNetPrefix = '10.0.0.0/16'
+var azTrainingVNetSubnet1Name = 'FrontendNetwork'
+var azTrainingVNetSubnet1Prefix = '10.0.0.0/24'
+var azTrainingVNetSubnet2Name = 'BackendNetwork'
+var azTrainingVNetSubnet2Prefix = '10.0.1.0/24'
+var webVMImagePublisher = 'MicrosoftWindowsServer'
+var webVMImageOffer = 'WindowsServer'
+var webVMVmSize = 'Standard_D4lds_v5'
+var webPublicIPName = 'WebPublicIP'
+var sqlVMImagePublisher = 'MicrosoftSQLServer'
+var sqlVMImageOffer = 'sql2019-ws2019'
+var sqlVMVmSize = 'Standard_D4lds_v5'
+var webApplicationToDeploy = 'https://https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/eshoponweb_iissosurce.zip'
+var webDscFile = 'https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/WEBDSC.zip'
+var sqlDscFile = 'https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/SQLDSC.zip'
 
 module monitoring 'br/public:avm/ptn/azd/monitoring:0.1.0' = {
   name: 'monitoring'
   params: {
-    logAnalyticsName: '${abbrs.operationalInsightsWorkspaces}${ResourceToken}'
-    applicationInsightsName: '${abbrs.insightsComponents}${ResourceToken}'
+    logAnalyticsName: '${abbrs.operationalInsightsWorkspaces}${resourceToken}'
+    applicationInsightsName: '${abbrs.insightsComponents}${resourceToken}'
     location: resourceGroup().location
   }
 }
 
-module AzTrainingVNet 'br/public:avm/res/network/virtual-network:0.5.1' = {
-  name: 'AzTrainingVNetDeployment'
+module azTrainingVNet 'br/public:avm/res/network/virtual-network:0.5.1' = {
+  name: 'azTrainingVNetDeployment'
   params: {
     // Required parameters
-    addressPrefixes: [AzTrainingVNetPrefix]
-    name: '${abbrs.networkVirtualNetworks}${ResourceToken}'
+    addressPrefixes: [azTrainingVNetPrefix]
+    name: '${abbrs.networkVirtualNetworks}${resourceToken}'
     // Non-required parameters
     location: resourceGroup().location
     tags: {
@@ -80,12 +77,12 @@ module AzTrainingVNet 'br/public:avm/res/network/virtual-network:0.5.1' = {
     }
     subnets: [
       {
-        name: AzTrainingVNetSubnet1Name
-        addressPrefix: AzTrainingVNetSubnet1Prefix
+        name: azTrainingVNetSubnet1Name
+        addressPrefix: azTrainingVNetSubnet1Prefix
       }
       {
-        name: AzTrainingVNetSubnet2Name
-        addressPrefix: AzTrainingVNetSubnet2Prefix
+        name: azTrainingVNetSubnet2Name
+        addressPrefix: azTrainingVNetSubnet2Prefix
       }
     ]
     diagnosticSettings: [
@@ -96,34 +93,34 @@ module AzTrainingVNet 'br/public:avm/res/network/virtual-network:0.5.1' = {
   }
 }
 
-resource WebPublicIP 'Microsoft.Network/publicIPAddresses@2016-03-30' = {
-  name: WebPublicIPName
+resource webPublicIP 'Microsoft.Network/publicIPAddresses@2016-03-30' = {
+  name: webPublicIPName
   location: resourceGroup().location
   tags: {
-    displayName: 'WebPublicIP'
+    displayName: 'webPublicIP'
   }
   properties: {
     publicIPAllocationMethod: 'Dynamic'
     dnsSettings: {
-      domainNameLabel: WebPublicIPDnsName
+      domainNameLabel: webPublicIPDnsName
     }
   }
 }
-module WebVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
+module webVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
   name: 'WebvirtualMachineDeployment'
   params: {
-    name: WebVMName
+    name: webVMName
     osType: 'Windows'
-    vmSize: WebVMVmSize
+    vmSize: webVMVmSize
     zone: 0
-    adminUsername: WebVMAdminUserName
-    adminPassword: WebVMAdminPassword
+    adminUsername: webVMAdminUserName
+    adminPassword: webVMAdminPassword
     encryptionAtHost: false
     location: resourceGroup().location
     imageReference: {
-      offer: WebVMImageOffer
-      publisher: WebVMImagePublisher
-      sku: WebVMWindowsOSVersion
+      offer: webVMImageOffer
+      publisher: webVMImagePublisher
+      sku: webVMWindowsOSVersion
       version: 'latest'
     }
     nicConfigurations: [
@@ -138,9 +135,9 @@ module WebVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
           {
             name: 'ipconfig1'
             pipConfiguration: {
-              publicIPAddressResourceId: WebPublicIP.id
+              publicIPAddressResourceId: webPublicIP.id
             }
-            subnetResourceId: AzTrainingVNet.outputs.subnetResourceIds[0]
+            subnetResourceId: azTrainingVNet.outputs.subnetResourceIds[0]
             privateIPAllocationMethod: 'Dynamic'
             diagnosticSettings: [
               {
@@ -163,13 +160,13 @@ module WebVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
       autoUpgradeMinorVersion: true
       settings: {
         configuration: {
-          url: WebModulesURL
+          url: webDscFile
           script: 'WEBDSC.ps1'
           function: 'Main'
         }
         configurationArguments: {
-          nodeName: WebVMName
-          webDeployPackage: WebPackage
+          nodeName: webVMName
+          webDeployPackage: webApplicationToDeploy
         }
       }
       diagnosticSettings: [
@@ -178,70 +175,25 @@ module WebVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
         }
       ]
     }
-    //Seems to be a bug in extensionCustomScriptConfig
-    // extensionCustomScriptConfig: {
-    //   enabled: true
-    //   name: 'Customize-WinVM'
-    //   tags: {
-    //     displayName: 'Customize-WinVM'
-    //   }
-    //   location: resourceGroup().location
-    //   fileData: {
-    //     storageAccountId: storageAccount.outputs.resourceId
-    //     uri: storageAccount.outputs.primaryBlobEndpoint
-    //   }
-    //   settings: {
-    //     fileUris: [
-    //       'https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/Customize-WinVM.ps1'
-    //     ]
-    //     commandToExecute: 'powershell -ExecutionPolicy Unrestricted -File ./customize-WinVM.ps1'
-    //   }
-    // }
   }
 }
-
-// // 'https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/Customize-WinVM.ps1'
-// resource WebVMName_Customize_WinVM 'Microsoft.Compute/virtualMachines/extensions@2016-03-30' = {
-//   //match the name of the VM for a child of the VM
-//   name: '${WebVMName}/CustomizeWinVM'
-//   location: resourceGroup().location
-//   tags: {
-//     displayName: 'Customize-WinVM'
-//   }
-//   properties: {
-//     publisher: 'Microsoft.Compute'
-//     type: 'CustomScriptExtension'
-//     typeHandlerVersion: '1.8'
-//     autoUpgradeMinorVersion: false
-//     settings: {
-//       fileUris: [
-//         'https://attdemodeploystoacc.blob.core.windows.net/deployartifacts/Customize-WinVM.ps1'
-//       ]
-//       commandToExecute: 'powershell -ExecutionPolicy Unrestricted -File ./customize-WinVM.ps1'
-//     }
-//   }
-//   dependsOn: [
-//     WebVM
-//   ]
-// }
-
 module SQLVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
   name: 'SQLvirtualMachineDeployment'
   params: {
     // Required parameters
-    name: SQLVMName
+    name: sqlVMName
     osType: 'Windows'
-    vmSize: SQLVMVmSize
+    vmSize: sqlVMVmSize
 
     zone: 0
-    adminUsername: SQLVMAdminUserName
-    adminPassword: SQLVMAdminPassword
+    adminUsername: sqlVMAdminUserName
+    adminPassword: sqlVMAdminPassword
     encryptionAtHost: false
     location: resourceGroup().location
     imageReference: {
-      offer: SQLVMImageOffer
-      publisher: SQLVMImagePublisher
-      sku: SQLVMSKU
+      offer: sqlVMImageOffer
+      publisher: sqlVMImagePublisher
+      sku: sqlVMSKU
       version: 'latest'
     }
     nicConfigurations: [
@@ -255,7 +207,7 @@ module SQLVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
         ipConfigurations: [
           {
             name: 'ipconfig1'
-            subnetResourceId: AzTrainingVNet.outputs.subnetResourceIds[1]
+            subnetResourceId: azTrainingVNet.outputs.subnetResourceIds[1]
             privateIPAllocationMethod: 'Dynamic'
             diagnosticSettings: [
               {
@@ -306,16 +258,16 @@ module SQLVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
       ]
       settings: {
         configuration: {
-          url: SQLModulesURL
+          url: sqlDscFile
           script: 'SQLDSC.ps1'
           function: 'Main'
         }
         configurationArguments: {
-          nodeName: SQLVMName
+          nodeName: sqlVMName
         }
       }
     }
   }
 }
 
-output APP_ENDPOINT string = 'http://${WebPublicIP.properties.dnsSettings.fqdn}'
+output APP_ENDPOINT string = 'http://${webPublicIP.properties.dnsSettings.fqdn}'
