@@ -8,11 +8,22 @@
     "location": {
       "value": "${AZURE_LOCATION}"
     },
+    "currentUserId": {
+      "value": "${AZURE_PRINCIPAL_ID}"
+    },
+
     "WebVMAdminUserName": {
       "value": "webvmadmin"
     },
     "SQLVMAdminUserName": {
       "value": "sqlvmadmin"
+    },
+
+    "WebVMAdminPassword": {
+      "value": "$(secretOrRandomPassword ${AZURE_KEY_VAULT_NAME} WebVMAdminPassword)"
+    },
+    "SQLVMAdminPassword": {
+      "value": "$(secretOrRandomPassword ${AZURE_KEY_VAULT_NAME} SQLVMAdminPassword)"
     }
   }
 }

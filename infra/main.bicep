@@ -9,14 +9,6 @@ param environmentName string
 @description('Primary location for all resources')
 param location string
 
-@allowed([
-  'Standard_LRS'
-  'Standard_GRS'
-  'Standard_RAGRS'
-  'Premium_LRS'
-])
-param vmstorageType string = 'Premium_LRS'
-
 param WebVMName string = ''
 
 param WebVMAdminUserName string = ''
@@ -47,6 +39,8 @@ param SQLVMAdminPassword string
 ])
 param SQLVMSKU string = 'Web'
 
+param currentUserId string
+
 // Tags that should be applied to all resources.
 // 
 // Note that 'azd-service-name' tags should be applied separately to service host resources.
@@ -63,10 +57,38 @@ var derivedSQLVMName = SQLVMName == '' ? 'sqlvm-${environmentName}' : SQLVMName
 var derivedWebVMName = WebVMName == '' ? 'webvm-${environmentName}' : WebVMName
 var derivedWebPublicIPDnsName = WebPublicIPDnsName == '' ? 'iaas2019-${resourceToken}' : WebPublicIPDnsName
 
+var abbrs = loadJsonContent('./abbreviations.json')
+
 resource rg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
   name: 'rg-${environmentName}'
   location: location
   tags: tags
+}
+
+module vault 'br/public:avm/res/key-vault/vault:0.11.0' = {
+  scope: rg
+  name: 'vaultDeployment'
+  params: {
+    name: '${abbrs.keyVaultVaults}${resourceToken}'
+    enablePurgeProtection: false
+    location: rg.location
+    secrets: [
+      {
+        name: 'WebVMAdminPassword'
+        value: WebVMAdminPassword
+      }
+      {
+        name: 'SQLVMAdminPassword'
+        value: SQLVMAdminPassword
+      }
+    ]
+    roleAssignments: [
+      {
+        roleDefinitionIdOrName: 'Key Vault Secrets Officer'
+        principalId: currentUserId
+      }
+    ]
+  }
 }
 
 //call into the module to create the resources
@@ -74,7 +96,6 @@ module resources './resources.bicep' = {
   name: 'resources'
   scope: rg
   params: {
-    vmstorageType: vmstorageType
     WebVMName: derivedWebVMName
     WebVMAdminUserName: WebVMAdminUserName
     WebVMAdminPassword: WebVMAdminPassword
@@ -89,3 +110,4 @@ module resources './resources.bicep' = {
 }
 
 output APP_ENDPOINT string = resources.outputs.APP_ENDPOINT
+output AZURE_KEY_VAULT_NAME string = vault.outputs.name

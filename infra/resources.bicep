@@ -1,13 +1,5 @@
 targetScope = 'resourceGroup'
 
-@allowed([
-  'Standard_LRS'
-  'Standard_GRS'
-  'Standard_RAGRS'
-  'Premium_LRS'
-])
-param vmstorageType string = 'Premium_LRS'
-
 @minLength(1)
 param WebVMName string
 
@@ -54,48 +46,29 @@ var AzTrainingVNetSubnet1Name = 'FrontendNetwork'
 var AzTrainingVNetSubnet1Prefix = '10.0.0.0/24'
 var AzTrainingVNetSubnet2Name = 'BackendNetwork'
 var AzTrainingVNetSubnet2Prefix = '10.0.1.0/24'
-var vmstorageName = '${abbrs.storageStorageAccounts}${ResourceToken}'
 var WebVMImagePublisher = 'MicrosoftWindowsServer'
 var WebVMImageOffer = 'WindowsServer'
-var WebVMOSDiskName = 'WebVMOSDisk'
 var WebVMVmSize = 'Standard_D4lds_v5'
-var WebVMVnetID = AzTrainingVNet.id
-var WebVMSubnetRef = '${WebVMVnetID}/subnets/${AzTrainingVNetSubnet1Name}'
-var WebVMStorageAccountContainerName = 'vhds'
-var WebVMNicName = '${WebVMName}NetworkInterface'
 var WebPublicIPName = 'WebPublicIP'
-var WebDSCArchiveFolder = 'DSC'
-var WebDSCArchiveFileName = 'WEBDSC.zip'
 var SQLVMImagePublisher = 'MicrosoftSQLServer'
 var SQLVMImageOffer = 'sql2019-ws2019'
-var SQLVMOSDiskName = 'SQLVMOSDisk'
 var SQLVMVmSize = 'Standard_D4lds_v5'
-var SQLVMVnetID = AzTrainingVNet.id
-var SQLVMSubnetRef = '${SQLVMVnetID}/subnets/${AzTrainingVNetSubnet2Name}'
-var SQLVMStorageAccountContainerName = 'vhds'
-var SQLVMNicName = '${SQLVMName}NetworkInterface'
-var SQLDISK1 = 'http://${vmstorageName}.blob.core.windows.net/vhds/dataDisk1.vhd'
-var SQLDISK2 = 'http://${vmstorageName}.blob.core.windows.net/vhds/dataDisk2.vhd'
-var SQLDSCArchiveFolder = 'DSC'
-var SQLDSCArchiveFileName = 'SQLDSC.zip'
 var WebModulesURL = 'https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/WEBDSC.zip'
-var WebConfigurationFunction = 'WEBDSC.ps1\\CREATEOUS'
+//var WebConfigurationFunction = 'WEBDSC.ps1\\CREATEOUS'
 var SQLModulesURL = 'https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/SQLDSC.zip'
-var SQLConfigurationFunction = 'CREATEOUS.ps1\\CREATEOUS'
+//var SQLConfigurationFunction = 'SQLDSC.ps1\\CREATEOUS'
 
 module monitoring 'br/public:avm/ptn/azd/monitoring:0.1.0' = {
   name: 'monitoring'
   params: {
     logAnalyticsName: '${abbrs.operationalInsightsWorkspaces}${ResourceToken}'
     applicationInsightsName: '${abbrs.insightsComponents}${ResourceToken}'
-    applicationInsightsDashboardName: '${abbrs.portalDashboards}${ResourceToken}'
     location: resourceGroup().location
   }
 }
 
 module AzTrainingVNet 'br/public:avm/res/network/virtual-network:0.5.1' = {
   name: 'AzTrainingVNetDeployment'
-
   params: {
     // Required parameters
     addressPrefixes: [AzTrainingVNetPrefix]
@@ -123,134 +96,6 @@ module AzTrainingVNet 'br/public:avm/res/network/virtual-network:0.5.1' = {
   }
 }
 
-resource vmstorage 'Microsoft.Storage/storageAccounts@2016-01-01' = {
-  name: vmstorageName
-  location: resourceGroup().location
-  sku: {
-    name: vmstorageType
-  }
-  tags: {
-    displayName: 'vmstorage'
-  }
-  kind: 'Storage'
-  dependsOn: []
-}
-
-resource WebVMNic 'Microsoft.Network/networkInterfaces@2016-03-30' = {
-  name: WebVMNicName
-  location: resourceGroup().location
-  tags: {
-    displayName: 'WebVMNic'
-  }
-  properties: {
-    ipConfigurations: [
-      {
-        name: 'ipconfig1'
-        properties: {
-          privateIPAllocationMethod: 'Dynamic'
-          subnet: {
-            id: WebVMSubnetRef
-          }
-          publicIPAddress: {
-            id: WebPublicIP.id
-          }
-        }
-      }
-    ]
-  }
-}
-
-resource WebVM 'Microsoft.Compute/virtualMachines@2015-06-15' = {
-  name: WebVMName
-  location: resourceGroup().location
-  tags: {
-    displayName: 'WebVM'
-  }
-  properties: {
-    hardwareProfile: {
-      vmSize: WebVMVmSize
-    }
-    osProfile: {
-      computerName: WebVMName
-      adminUsername: WebVMAdminUserName
-      adminPassword: WebVMAdminPassword
-    }
-    storageProfile: {
-      imageReference: {
-        publisher: WebVMImagePublisher
-        offer: WebVMImageOffer
-        sku: WebVMWindowsOSVersion
-        version: 'latest' //'17763.6659.241205'
-      }
-      osDisk: {
-        name: 'WebVMOSDisk'
-        vhd: {
-          uri: '${vmstorage.properties.primaryEndpoints.blob}${WebVMStorageAccountContainerName}/${WebVMOSDiskName}.vhd'
-        }
-        caching: 'ReadWrite'
-        createOption: 'FromImage'
-      }
-    }
-    networkProfile: {
-      networkInterfaces: [
-        {
-          id: WebVMNic.id
-        }
-      ]
-    }
-  }
-}
-
-resource WebVMName_Microsoft_Powershell_DSC 'Microsoft.Compute/virtualMachines/extensions@2016-03-30' = {
-  parent: WebVM
-  name: 'Microsoft.Powershell.DSC'
-  location: resourceGroup().location
-  tags: {
-    displayName: 'WebDSC'
-  }
-  properties: {
-    publisher: 'Microsoft.Powershell'
-    type: 'DSC'
-    typeHandlerVersion: '2.9'
-    autoUpgradeMinorVersion: true
-    settings: {
-      configuration: {
-        url: concat(WebModulesURL)
-        script: 'WEBDSC.ps1'
-        function: 'Main'
-      }
-      configurationArguments: {
-        nodeName: WebVMName
-        webDeployPackage: WebPackage
-      }
-    }
-    // protectedSettings: {
-    //   configurationUrlSasToken: _artifactsLocationSasToken
-    // }
-  }
-}
-
-resource WebVMName_Customize_WinVM 'Microsoft.Compute/virtualMachines/extensions@2016-03-30' = {
-  parent: WebVM
-  name: 'Customize-WinVM'
-  location: resourceGroup().location
-  tags: {
-    displayName: 'Customize-WinVM'
-  }
-  properties: {
-    publisher: 'Microsoft.Compute'
-    type: 'CustomScriptExtension'
-    typeHandlerVersion: '1.8'
-    autoUpgradeMinorVersion: false
-    settings: {
-      fileUris: [
-        'https://attdemodeploystoacc.blob.core.windows.net/deployartifacts/Customize-WinVM.ps1'
-      ]
-      commandToExecute: 'powershell -ExecutionPolicy Unrestricted -File ./customize-WinVM.ps1'
-    }
-  }
-}
-
 resource WebPublicIP 'Microsoft.Network/publicIPAddresses@2016-03-30' = {
   name: WebPublicIPName
   location: resourceGroup().location
@@ -263,116 +108,213 @@ resource WebPublicIP 'Microsoft.Network/publicIPAddresses@2016-03-30' = {
       domainNameLabel: WebPublicIPDnsName
     }
   }
-  dependsOn: []
 }
-
-resource SQLVMNic 'Microsoft.Network/networkInterfaces@2016-03-30' = {
-  name: SQLVMNicName
-  location: resourceGroup().location
-  tags: {
-    displayName: 'SQLVMNic'
-  }
-  properties: {
-    ipConfigurations: [
+module WebVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
+  name: 'WebvirtualMachineDeployment'
+  params: {
+    name: WebVMName
+    osType: 'Windows'
+    vmSize: WebVMVmSize
+    zone: 0
+    adminUsername: WebVMAdminUserName
+    adminPassword: WebVMAdminPassword
+    encryptionAtHost: false
+    location: resourceGroup().location
+    imageReference: {
+      offer: WebVMImageOffer
+      publisher: WebVMImagePublisher
+      sku: WebVMWindowsOSVersion
+      version: 'latest'
+    }
+    nicConfigurations: [
       {
-        name: 'ipconfig1'
-        properties: {
-          privateIPAllocationMethod: 'Dynamic'
-          subnet: {
-            id: SQLVMSubnetRef
+        deleteOption: 'Delete'
+        diagnosticSettings: [
+          {
+            workspaceResourceId: monitoring.outputs.logAnalyticsWorkspaceResourceId
           }
-        }
+        ]
+        ipConfigurations: [
+          {
+            name: 'ipconfig1'
+            pipConfiguration: {
+              publicIPAddressResourceId: WebPublicIP.id
+            }
+            subnetResourceId: AzTrainingVNet.outputs.subnetResourceIds[0]
+            privateIPAllocationMethod: 'Dynamic'
+            diagnosticSettings: [
+              {
+                workspaceResourceId: monitoring.outputs.logAnalyticsWorkspaceResourceId
+              }
+            ]
+          }
+        ]
       }
     ]
-  }
-}
-
-resource SQLVM 'Microsoft.Compute/virtualMachines@2015-06-15' = {
-  name: SQLVMName
-  location: resourceGroup().location
-  tags: {
-    displayName: 'SQLVM'
-  }
-  properties: {
-    hardwareProfile: {
-      vmSize: SQLVMVmSize
-    }
-    osProfile: {
-      computerName: SQLVMName
-      adminUsername: SQLVMAdminUserName
-      adminPassword: SQLVMAdminPassword
-    }
-    storageProfile: {
-      imageReference: {
-        publisher: SQLVMImagePublisher
-        offer: SQLVMImageOffer
-        sku: SQLVMSKU
-        version: 'latest' //'15.0.230214'
+    osDisk: {
+      caching: 'ReadWrite'
+      diskSizeGB: 128
+      managedDisk: {
+        storageAccountType: 'Premium_LRS'
       }
-      osDisk: {
-        name: 'SQLVMOSDisk'
-        vhd: {
-          uri: '${vmstorage.properties.primaryEndpoints.blob}${SQLVMStorageAccountContainerName}/${SQLVMOSDiskName}.vhd'
+    }
+    extensionDSCConfig: {
+      enabled: true
+      autoUpgradeMinorVersion: true
+      settings: {
+        configuration: {
+          url: WebModulesURL
+          script: 'WEBDSC.ps1'
+          function: 'Main'
         }
-        caching: 'ReadWrite'
-        createOption: 'FromImage'
+        configurationArguments: {
+          nodeName: WebVMName
+          webDeployPackage: WebPackage
+        }
       }
-      dataDisks: [
+      diagnosticSettings: [
         {
-          name: 'datadisk1'
-          diskSizeGB: 1023
-          lun: 0
-          vhd: {
-            uri: SQLDISK1
-          }
-          createOption: 'Empty'
-        }
-        {
-          name: 'datadisk2'
-          diskSizeGB: 1023
-          lun: 1
-          vhd: {
-            uri: SQLDISK2
-          }
-          createOption: 'Empty'
+          workspaceResourceId: monitoring.outputs.logAnalyticsWorkspaceResourceId
         }
       ]
     }
-    networkProfile: {
-      networkInterfaces: [
-        {
-          id: SQLVMNic.id
-        }
-      ]
-    }
-  }
-}
-
-resource SQLVMName_Microsoft_Powershell_DSC 'Microsoft.Compute/virtualMachines/extensions@2016-03-30' = {
-  parent: SQLVM
-  name: 'Microsoft.Powershell.DSC'
-  location: resourceGroup().location
-  tags: {
-    displayName: 'SQLDSC'
-  }
-  properties: {
-    publisher: 'Microsoft.Powershell'
-    type: 'DSC'
-    typeHandlerVersion: '2.9'
-    autoUpgradeMinorVersion: true
-    settings: {
-      configuration: {
-        url: concat(SQLModulesURL)
-        script: 'SQLDSC.ps1'
-        function: 'Main'
-      }
-      configurationArguments: {
-        nodeName: SQLVMName
-      }
-    }
-    // protectedSettings: {
-    //   configurationUrlSasToken: _artifactsLocationSasToken
+    //Seems to be a bug in extensionCustomScriptConfig
+    // extensionCustomScriptConfig: {
+    //   enabled: true
+    //   name: 'Customize-WinVM'
+    //   tags: {
+    //     displayName: 'Customize-WinVM'
+    //   }
+    //   location: resourceGroup().location
+    //   fileData: {
+    //     storageAccountId: storageAccount.outputs.resourceId
+    //     uri: storageAccount.outputs.primaryBlobEndpoint
+    //   }
+    //   settings: {
+    //     fileUris: [
+    //       'https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/Customize-WinVM.ps1'
+    //     ]
+    //     commandToExecute: 'powershell -ExecutionPolicy Unrestricted -File ./customize-WinVM.ps1'
+    //   }
     // }
+  }
+}
+
+// // 'https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/Customize-WinVM.ps1'
+// resource WebVMName_Customize_WinVM 'Microsoft.Compute/virtualMachines/extensions@2016-03-30' = {
+//   //match the name of the VM for a child of the VM
+//   name: '${WebVMName}/CustomizeWinVM'
+//   location: resourceGroup().location
+//   tags: {
+//     displayName: 'Customize-WinVM'
+//   }
+//   properties: {
+//     publisher: 'Microsoft.Compute'
+//     type: 'CustomScriptExtension'
+//     typeHandlerVersion: '1.8'
+//     autoUpgradeMinorVersion: false
+//     settings: {
+//       fileUris: [
+//         'https://attdemodeploystoacc.blob.core.windows.net/deployartifacts/Customize-WinVM.ps1'
+//       ]
+//       commandToExecute: 'powershell -ExecutionPolicy Unrestricted -File ./customize-WinVM.ps1'
+//     }
+//   }
+//   dependsOn: [
+//     WebVM
+//   ]
+// }
+
+module SQLVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
+  name: 'SQLvirtualMachineDeployment'
+  params: {
+    // Required parameters
+    name: SQLVMName
+    osType: 'Windows'
+    vmSize: SQLVMVmSize
+
+    zone: 0
+    adminUsername: SQLVMAdminUserName
+    adminPassword: SQLVMAdminPassword
+    encryptionAtHost: false
+    location: resourceGroup().location
+    imageReference: {
+      offer: SQLVMImageOffer
+      publisher: SQLVMImagePublisher
+      sku: SQLVMSKU
+      version: 'latest'
+    }
+    nicConfigurations: [
+      {
+        deleteOption: 'Delete'
+        diagnosticSettings: [
+          {
+            workspaceResourceId: monitoring.outputs.logAnalyticsWorkspaceResourceId
+          }
+        ]
+        ipConfigurations: [
+          {
+            name: 'ipconfig1'
+            subnetResourceId: AzTrainingVNet.outputs.subnetResourceIds[1]
+            privateIPAllocationMethod: 'Dynamic'
+            diagnosticSettings: [
+              {
+                workspaceResourceId: monitoring.outputs.logAnalyticsWorkspaceResourceId
+              }
+            ]
+          }
+        ]
+      }
+    ]
+    osDisk: {
+      caching: 'ReadWrite'
+      diskSizeGB: 128
+      managedDisk: {
+        storageAccountType: 'Premium_LRS'
+      }
+    }
+    dataDisks: [
+      {
+        name: 'datadisk1'
+        diskSizeGB: 1023
+        managedDisk: {
+          storageAccountType: 'Premium_LRS'
+        }
+        lun: 0
+        createOption: 'Empty'
+      }
+      {
+        name: 'datadisk2'
+        diskSizeGB: 1023
+        lun: 1
+        managedDisk: {
+          storageAccountType: 'Premium_LRS'
+        }
+        createOption: 'Empty'
+      }
+    ]
+    extensionDSCConfig: {
+      enabled: true
+      publisher: 'Microsoft.Powershell'
+      type: 'DSC'
+      typeHandlerVersion: '2.9'
+      autoUpgradeMinorVersion: true
+      diagnosticSettings: [
+        {
+          workspaceResourceId: monitoring.outputs.logAnalyticsWorkspaceResourceId
+        }
+      ]
+      settings: {
+        configuration: {
+          url: SQLModulesURL
+          script: 'SQLDSC.ps1'
+          function: 'Main'
+        }
+        configurationArguments: {
+          nodeName: SQLVMName
+        }
+      }
+    }
   }
 }
 
