@@ -3,27 +3,50 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "environmentName": {
-      "value": "${AZURE_ENV_NAME}"
+      "value": "${AZURE_ENV_NAME}",
+      "metadata": {
+        "description": "The name of the environment",
+        "type": "string"
+      }
     },
     "location": {
-      "value": "${AZURE_LOCATION}"
+      "value": "${AZURE_LOCATION}",
+      "metadata": {
+        "description": "The location of the resources"
+      }
     },
     "currentUserId": {
-      "value": "${AZURE_PRINCIPAL_ID}"
+      "value": "${AZURE_PRINCIPAL_ID}",
+      "metadata": {
+        "description": "The current user id"
+      }
     },
 
     "webVMAdminUserName": {
-      "value": "webvmadmin"
+      "value": "webvmadmin",
+      "metadata": {
+        "description": "The username for the web VM"
+      }
     },
     "sqlVMAdminUserName": {
-      "value": "sqlvmadmin"
+      "value": "sqlvmadmin",
+      "metadata": {
+        "description": "The username for the SQL VM"
+      }
     },
-
     "webVMAdminPassword": {
-      "value": "$(secretOrRandomPassword ${AZURE_KEY_VAULT_NAME} WebVMAdminPassword)"
+      "value": "$(secretOrRandomPassword ${AZURE_KEY_VAULT_NAME} WebVMAdminPassword)",
+      "metadata": {
+        "description": "The password for the web VM",
+        "type": "securestring"
+      }
     },
     "sqlVMAdminPassword": {
-      "value": "$(secretOrRandomPassword ${AZURE_KEY_VAULT_NAME} SQLVMAdminPassword)"
+      "value": "$(secretOrRandomPassword ${AZURE_KEY_VAULT_NAME} SQLVMAdminPassword)",
+      "metadata": {
+        "description": "The password for the SQL VM",
+        "type": "securestring"
+      }
     }
   }
 }

@@ -1,0 +1,107 @@
+#
+# PSRule for Azure configuration
+#
+
+# Please see the documentation for all configuration options:
+# https://aka.ms/ps-rule/options
+# https://aka.ms/ps-rule-azure/options
+
+# Configure binding for local rules.
+binding:
+  preferTargetInfo: true
+  targetType:
+  - type
+  - resourceType
+
+requires:
+  PSRule: '@pre >=2.9.0'
+  PSRule.Rules.Azure: '@pre >=1.40'
+
+configuration:
+  # Enable automatic expansion of JSON parameter files.
+  # PS_RULE doesn't appreciate the environment variables in the parameter files
+  AZURE_PARAMETER_FILE_EXPANSION: false
+
+  # Enable automatic expansion of Azure Bicep source files.
+  AZURE_BICEP_FILE_EXPANSION: true
+
+  # Configures the number of seconds to wait for build Bicep files.
+  AZURE_BICEP_FILE_EXPANSION_TIMEOUT: 20
+
+  # Enable automatic expansion of Bicep parameter files.
+  AZURE_BICEP_PARAMS_FILE_EXPANSION: true
+
+
+  # Configure the minimum version of the Bicep CLI.
+  AZURE_BICEP_MINIMUM_VERSION: '0.18.4'
+  
+  environment:
+    AZURE_ENV_NAME: 'dev'
+    AZURE_LOCATION: 'eastus'
+
+
+  AZURE_DEPLOYMENT_NONSENSITIVE_PARAMETER_NAMES:
+    webVMAdminUserName
+    sqlVMAdminUserName
+
+input:
+  pathIgnore:
+    # Ignore other files in the repository.
+  - '.vscode/'
+  - '.github/'
+  - '*.md'
+  - '*.zip'
+
+  # samples files ignore
+  # Exclude bicepconfig.json
+  # - 'bicepconfig.json'
+
+  # ignore all bicep files except the ones that have been created to test modules
+  # - 'modules/**/*.bicep'
+  # - '!modules/**/*.tests.bicep'
+
+rule:
+  exclude: # Demo deployments will be short lived
+    - Azure.Storage.UseReplication
+    - Azure.VM.Standalone 
+    - Azure.VM.MaintenanceConfig 
+    - Azure.VM.AMA
+    - Azure.VM.PublicIPAttached 
+    - Azure.PublicIP.AvailabilityZone 
+    - Azure.KeyVault.PurgeProtect 
+    - Azure.KeyVault.Firewall
+    # potential enhancements
+    - Azure.PublicIP.StandardSKU
+    - Azure.PublicIP.MigrateStandard
+
+    # need fixes
+    - Azure.Deployment.SecureParameter # false positive on keyvault array. 
+    - Azure.Resource.UseTags # triggering on nested sql data disks - Microsoft.Compute/disks
+
+
+include:
+  module:
+    - PSRule.Rules.Azure
+
+execution:
+  aliasReference: Warn
+  duplicateResourceId: Error
+  languageMode: FullLanguage
+  initialSessionState: BuiltIn
+  invariantCulture: Warn
+  ruleExcluded: Ignore
+  ruleInconclusive: Warn
+  ruleSuppressed: Warn
+  suppressionGroupExpired: Warn
+  unprocessedObject: Ignore
+
+
+
+
+
+output:
+  as: Detail
+  banner: Default
+  culture: [en-US]
+  encoding: Default
+  footer: Default

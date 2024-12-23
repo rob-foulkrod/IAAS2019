@@ -1,13 +1,17 @@
 targetScope = 'resourceGroup'
 
 @minLength(1)
-param webVMName string
+@maxLength(15)
+@description('Name of the web Virtual Machine')
+param webVMName string = 'webvm'
 
 @minLength(1)
-param webVMAdminUserName string
+@description('Name of the web Virtual Machine Admin User')
+param webVMAdminUserName string = newGuid()
 
+@description('Password for the web Virtual Machine Admin User')
 @secure()
-param webVMAdminPassword string
+param webVMAdminPassword string = newGuid()
 
 @allowed([
   '2008-R2-SP1'
@@ -15,27 +19,44 @@ param webVMAdminPassword string
   '2012-R2-Datacenter'
   '2019-Datacenter'
 ])
+@description('Windows OS version for the web Virtual Machine')
 param webVMWindowsOSVersion string = '2019-Datacenter'
 
 @minLength(1)
-param webPublicIPDnsName string
+@maxLength(61)
+@description('DNS name for the web Public IP where the application will be exposed')
+param webPublicIPDnsName string = 'some-dns-name'
 
 @minLength(1)
-param sqlVMName string
+@maxLength(15)
+@description('Name of the SQL Virtual Machine')
+param sqlVMName string = 'sqlvm'
 
 @minLength(1)
-param sqlVMAdminUserName string
+@description('Name of the SQL Virtual Machine Admin User')
+param sqlVMAdminUserName string = newGuid()
 
 @secure()
-param sqlVMAdminPassword string
+@description('Password for the SQL Virtual Machine Admin User')
+param sqlVMAdminPassword string = newGuid()
 
 @allowed([
   'Web'
   'Standard'
 ])
+@description('SKU for the SQL Virtual Machine')
 param sqlVMSKU string = 'Web'
 
-param resourceToken string
+@description('a unique string to ensure resource uniqueness')
+param resourceUniquifier string = 'abc1234'
+
+@description('The name of the Log Analytics Workspace created for monitoring')
+param logAnalyticsId string = newGuid()
+
+@description('Tags to be applied to all resources')
+param tags object = {
+  'azd-env-name': 'dev'
+}
 
 var abbrs = loadJsonContent('./abbreviations.json')
 
@@ -47,34 +68,23 @@ var azTrainingVNetSubnet2Prefix = '10.0.1.0/24'
 var webVMImagePublisher = 'MicrosoftWindowsServer'
 var webVMImageOffer = 'WindowsServer'
 var webVMVmSize = 'Standard_D4lds_v5'
-var webPublicIPName = 'WebPublicIP'
 var sqlVMImagePublisher = 'MicrosoftSQLServer'
 var sqlVMImageOffer = 'sql2019-ws2019'
 var sqlVMVmSize = 'Standard_D4lds_v5'
-var webApplicationToDeploy = 'https://https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/eshoponweb_iissosurce.zip'
+var webApplicationToDeploy = 'https://github.com/rob-foulkrod/IAAS2019/raw/main/infra/artifacts/eshoponweb_iissource.zip'
 var webDscFile = 'https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/WEBDSC.zip'
 var sqlDscFile = 'https://github.com/rob-foulkrod/IAAS2019/raw/refs/heads/main/infra/artifacts/SQLDSC.zip'
 
-module monitoring 'br/public:avm/ptn/azd/monitoring:0.1.0' = {
-  name: 'monitoring'
-  params: {
-    logAnalyticsName: '${abbrs.operationalInsightsWorkspaces}${resourceToken}'
-    applicationInsightsName: '${abbrs.insightsComponents}${resourceToken}'
-    location: resourceGroup().location
-  }
-}
-
+@description('A Virtual Network with two subnets')
 module azTrainingVNet 'br/public:avm/res/network/virtual-network:0.5.1' = {
   name: 'azTrainingVNetDeployment'
   params: {
     // Required parameters
     addressPrefixes: [azTrainingVNetPrefix]
-    name: '${abbrs.networkVirtualNetworks}${resourceToken}'
-    // Non-required parameters
+    name: '${abbrs.networkVirtualNetworks}${resourceUniquifier}'
     location: resourceGroup().location
-    tags: {
-      displayName: 'AzTrainingVNet'
-    }
+    tags: union(tags, { displayName: 'azTrainingVNet' })
+
     subnets: [
       {
         name: azTrainingVNetSubnet1Name
@@ -87,29 +97,35 @@ module azTrainingVNet 'br/public:avm/res/network/virtual-network:0.5.1' = {
     ]
     diagnosticSettings: [
       {
-        workspaceResourceId: monitoring.outputs.logAnalyticsWorkspaceResourceId
+        workspaceResourceId: logAnalyticsId
       }
     ]
   }
 }
 
-resource webPublicIP 'Microsoft.Network/publicIPAddresses@2016-03-30' = {
-  name: webPublicIPName
+@description('A Public IP address for the web Virtual Machine')
+resource webPublicIP 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
+  name: '${abbrs.networkPublicIPAddresses}${resourceUniquifier}'
   location: resourceGroup().location
-  tags: {
-    displayName: 'webPublicIP'
-  }
+  tags: union(tags, {
+    displayName: 'WebPublicIP'
+  })
   properties: {
     publicIPAllocationMethod: 'Dynamic'
     dnsSettings: {
       domainNameLabel: webPublicIPDnsName
     }
   }
+  dependsOn: []
 }
+
+@description('A Virtual Machine for the web application')
 module webVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
   name: 'WebvirtualMachineDeployment'
   params: {
+    tags: tags
     name: webVMName
+    computerName: webVMName
     osType: 'Windows'
     vmSize: webVMVmSize
     zone: 0
@@ -123,32 +139,38 @@ module webVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
       sku: webVMWindowsOSVersion
       version: 'latest'
     }
+
     nicConfigurations: [
       {
         deleteOption: 'Delete'
         diagnosticSettings: [
           {
-            workspaceResourceId: monitoring.outputs.logAnalyticsWorkspaceResourceId
+            workspaceResourceId: logAnalyticsId
           }
         ]
         ipConfigurations: [
           {
-            name: 'ipconfig1'
+            tags: tags
+            name: 'webipconfig1'
+            nicIpConfigName: 'webipconfig1'
             pipConfiguration: {
               publicIPAddressResourceId: webPublicIP.id
+              publicIpNameSuffix: '-pip-01'
             }
             subnetResourceId: azTrainingVNet.outputs.subnetResourceIds[0]
             privateIPAllocationMethod: 'Dynamic'
             diagnosticSettings: [
               {
-                workspaceResourceId: monitoring.outputs.logAnalyticsWorkspaceResourceId
+                workspaceResourceId: logAnalyticsId
               }
             ]
           }
         ]
+        nicSuffix: '-nic-01'
       }
     ]
     osDisk: {
+      name: 'webosdisk'
       caching: 'ReadWrite'
       diskSizeGB: 128
       managedDisk: {
@@ -171,17 +193,20 @@ module webVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
       }
       diagnosticSettings: [
         {
-          workspaceResourceId: monitoring.outputs.logAnalyticsWorkspaceResourceId
+          workspaceResourceId: logAnalyticsId
         }
       ]
     }
   }
 }
+@description('A Virtual Machine for the SQL Server')
 module SQLVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
   name: 'SQLvirtualMachineDeployment'
   params: {
+    tags: tags
     // Required parameters
     name: sqlVMName
+    computerName: sqlVMName
     osType: 'Windows'
     vmSize: sqlVMVmSize
 
@@ -201,17 +226,18 @@ module SQLVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
         deleteOption: 'Delete'
         diagnosticSettings: [
           {
-            workspaceResourceId: monitoring.outputs.logAnalyticsWorkspaceResourceId
+            workspaceResourceId: logAnalyticsId
           }
         ]
         ipConfigurations: [
           {
-            name: 'ipconfig1'
+            name: 'sqlipconfig'
+            nicIpConfigName: 'sqlipconfig'
             subnetResourceId: azTrainingVNet.outputs.subnetResourceIds[1]
             privateIPAllocationMethod: 'Dynamic'
             diagnosticSettings: [
               {
-                workspaceResourceId: monitoring.outputs.logAnalyticsWorkspaceResourceId
+                workspaceResourceId: logAnalyticsId
               }
             ]
           }
@@ -219,6 +245,7 @@ module SQLVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
       }
     ]
     osDisk: {
+      name: 'sqlosdisk'
       caching: 'ReadWrite'
       diskSizeGB: 128
       managedDisk: {
@@ -227,22 +254,24 @@ module SQLVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
     }
     dataDisks: [
       {
-        name: 'datadisk1'
+        name: 'webdatadisk1'
         diskSizeGB: 1023
         managedDisk: {
           storageAccountType: 'Premium_LRS'
         }
         lun: 0
         createOption: 'Empty'
+        tags: tags
       }
       {
-        name: 'datadisk2'
+        name: 'webdatadisk2'
         diskSizeGB: 1023
         lun: 1
         managedDisk: {
           storageAccountType: 'Premium_LRS'
         }
         createOption: 'Empty'
+        tags: tags
       }
     ]
     extensionDSCConfig: {
@@ -253,7 +282,7 @@ module SQLVM 'br/public:avm/res/compute/virtual-machine:0.10.1' = {
       autoUpgradeMinorVersion: true
       diagnosticSettings: [
         {
-          workspaceResourceId: monitoring.outputs.logAnalyticsWorkspaceResourceId
+          workspaceResourceId: logAnalyticsId
         }
       ]
       settings: {
