@@ -19,3 +19,4 @@ jobs:
         uses: Microsoft/ps-rule@v2
         with:
           modules: "PSRule.Rules.Azure"
+          inputType: repository
