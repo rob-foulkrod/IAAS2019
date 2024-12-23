@@ -31,6 +31,7 @@ configuration:
   # Enable automatic expansion of Bicep parameter files.
   AZURE_BICEP_PARAMS_FILE_EXPANSION: true
 
+  AZURE_BICEP_CHECK_TOOL: true
 
   # Configure the minimum version of the Bicep CLI.
   AZURE_BICEP_MINIMUM_VERSION: '0.18.4'
