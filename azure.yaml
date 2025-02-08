@@ -1,3 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 
-name: iaas2019
+name: tdd-iaas2019
+metadata:
+  template: tdd-iaas2019@0.0.1
+infra:
+   provider: "bicep"
