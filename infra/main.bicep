@@ -7,7 +7,7 @@ param environmentName string = 'dev'
 
 @minLength(1)
 @description('Primary location for all resources')
-param location string = 'eastus'
+param location string
 
 @description('The name of the web Virtual Machine')
 @maxLength(15)
