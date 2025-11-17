@@ -61,6 +61,7 @@ param currentUserId string = newGuid()
 // Tags that should be applied to all resources.
 var tags = {
   'azd-env-name': environmentName
+  SecurityControl: 'Ignore'
 }
 
 var resourceUniquifier = toLower(uniqueString(subscription().id, environmentName, location))
